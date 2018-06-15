@@ -16,7 +16,7 @@ statobj_t       statobjlist[MAXSTATS];
 statobj_t       *laststatobj;
 
 
-struct
+static struct
 {
     short      picnum;
     wl_stat_t  type;

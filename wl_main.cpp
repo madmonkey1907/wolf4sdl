@@ -1209,7 +1209,7 @@ static void InitGame()
 
     // initialize SDL
 #if defined _WIN32
-    putenv("SDL_VIDEODRIVER=directx");
+    //putenv("SDL_VIDEODRIVER=directx");
 #endif
     if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK) < 0)
     {
@@ -1234,15 +1234,15 @@ static void InitGame()
 
     SignonScreen ();
 
-#if defined _WIN32
+#if defined _WIN32 && 0
     if(!fullscreen)
     {
-        struct SDL_SysWMinfo wmInfo;
+        SDL_SysWMinfo wmInfo;
         SDL_VERSION(&wmInfo.version);
 
-        if(SDL_GetWMInfo(&wmInfo) != -1)
+        if(SDL_GetWindowWMInfo(window, &wmInfo) != -1)
         {
-            HWND hwndSDL = wmInfo.window;
+            HWND hwndSDL = wmInfo.win.window;
             DWORD style = GetWindowLong(hwndSDL, GWL_STYLE) & ~WS_SYSMENU;
             SetWindowLong(hwndSDL, GWL_STYLE, style);
             SetWindowPos(hwndSDL, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
@@ -1678,6 +1678,12 @@ void CheckParameters(int argc, char *argv[])
     bool hasError = false, showHelp = false;
     bool sampleRateGiven = false, audioBufferGiven = false;
     int defaultSampleRate = param_samplerate;
+
+    screenBits = 32;
+    param_joystickindex = 0;
+    param_joystickhat = 0;
+    fullscreen = false;
+    forcegrabmouse = false;
 
     for(int i = 1; i < argc; i++)
     {

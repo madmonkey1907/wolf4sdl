@@ -18,6 +18,7 @@
 //
 
 #include "wl_def.h"
+#include "id_in.h"
 
 
 /*
@@ -37,7 +38,7 @@ boolean forcegrabmouse;
 
 
 // 	Global variables
-volatile boolean    Keyboard[SDLK_LAST];
+std::map<int,kBoolean> Keyboard;
 volatile boolean	Paused;
 volatile char		LastASCII;
 volatile ScanCode	LastScan;
@@ -170,13 +171,25 @@ void IN_GetJoyDelta(int *dx,int *dy)
             y += 127;
         else if(hatState & SDL_HAT_UP)
             y -= 127;
-
-        if(x < -128) x = -128;
-        else if(x > 127) x = 127;
-
-        if(y < -128) y = -128;
-        else if(y > 127) y = 127;
     }
+
+#if 1//defined(NESMINI) && clovercon
+    int bt=IN_JoyButtons();
+    if(bt & (1<<12))
+        x += 127;
+    else if(bt & (1<<11))
+        x -= 127;
+    if(bt & (1<<14))
+        y += 127;
+    else if(bt & (1<<13))
+        y -= 127;
+#endif
+
+    if(x < -128) x = -128;
+    else if(x > 127) x = 127;
+
+    if(y < -128) y = -128;
+    else if(y > 127) y = 127;
 
     *dx = x;
     *dy = y;
@@ -228,6 +241,36 @@ int IN_JoyButtons()
     int res = 0;
     for(int i = 0; i < JoyNumButtons && i < 32; i++)
         res |= SDL_JoystickGetButton(Joystick, i) << i;
+#if 1
+    static int prev=0;
+    int c=res^prev;
+#if 0
+    for(int i = 0; i < JoyNumButtons && i < 32; i++)
+    {
+        if(c&1)
+            printf("button %i changed\n",i);
+        c>>=1;
+    }
+#endif
+#if 1
+    if(c&(1<<8))
+    {
+        res^=res&(1<<8);
+        LastScan = sc_Escape;
+        Keyboard[int(LastScan)] = (res>>8)&1;
+    }
+#endif
+#if 0
+    if(c&(1<<9))
+    {
+        res^=res&(1<<9);
+        LastScan = SDLK_PAUSE;
+        Keyboard[int(LastScan)] = (res>>9)&1;
+        Paused = true;
+    }
+#endif
+    prev=c;
+#endif
     return res;
 }
 
@@ -247,15 +290,15 @@ static void processEvent(SDL_Event *event)
         // check for keypresses
         case SDL_KEYDOWN:
         {
-            if(event->key.keysym.sym==SDLK_SCROLLOCK || event->key.keysym.sym==SDLK_F12)
+            if(event->key.keysym.sym==SDLK_SCROLLLOCK || event->key.keysym.sym==SDLK_F12)
             {
                 GrabInput = !GrabInput;
-                SDL_WM_GrabInput(GrabInput ? SDL_GRAB_ON : SDL_GRAB_OFF);
+                SDL_SetRelativeMouseMode(GrabInput ? SDL_TRUE : SDL_FALSE);
                 return;
             }
 
             LastScan = event->key.keysym.sym;
-            SDLMod mod = SDL_GetModState();
+            SDL_Keymod mod = SDL_GetModState();
             if(Keyboard[sc_Alt])
             {
                 if(LastScan==SDLK_F4)
@@ -272,10 +315,10 @@ static void processEvent(SDL_Event *event)
                 {
                     switch(LastScan)
                     {
-                        case SDLK_KP2: LastScan = SDLK_DOWN; break;
-                        case SDLK_KP4: LastScan = SDLK_LEFT; break;
-                        case SDLK_KP6: LastScan = SDLK_RIGHT; break;
-                        case SDLK_KP8: LastScan = SDLK_UP; break;
+                        case SDLK_KP_2: LastScan = SDLK_DOWN; break;
+                        case SDLK_KP_4: LastScan = SDLK_LEFT; break;
+                        case SDLK_KP_6: LastScan = SDLK_RIGHT; break;
+                        case SDLK_KP_8: LastScan = SDLK_UP; break;
                     }
                 }
             }
@@ -294,8 +337,7 @@ static void processEvent(SDL_Event *event)
                 if(sym < lengthof(ASCIINames) && ASCIINames[sym])
                     LastASCII = ASCIINames[sym];
             }
-            if(LastScan<SDLK_LAST)
-                Keyboard[LastScan] = 1;
+            Keyboard[int(LastScan)] = 1;
             if(LastScan == SDLK_PAUSE)
                 Paused = true;
             break;
@@ -314,16 +356,15 @@ static void processEvent(SDL_Event *event)
                 {
                     switch(key)
                     {
-                        case SDLK_KP2: key = SDLK_DOWN; break;
-                        case SDLK_KP4: key = SDLK_LEFT; break;
-                        case SDLK_KP6: key = SDLK_RIGHT; break;
-                        case SDLK_KP8: key = SDLK_UP; break;
+                        case SDLK_KP_2: key = SDLK_DOWN; break;
+                        case SDLK_KP_4: key = SDLK_LEFT; break;
+                        case SDLK_KP_6: key = SDLK_RIGHT; break;
+                        case SDLK_KP_8: key = SDLK_UP; break;
                     }
                 }
             }
 
-            if(key<SDLK_LAST)
-                Keyboard[key] = 0;
+            Keyboard[key] = 0;
             break;
         }
 
@@ -382,8 +423,8 @@ IN_Startup(void)
             JoyNumButtons = SDL_JoystickNumButtons(Joystick);
             if(JoyNumButtons > 32) JoyNumButtons = 32;      // only up to 32 buttons are supported
             JoyNumHats = SDL_JoystickNumHats(Joystick);
-            if(param_joystickhat < -1 || param_joystickhat >= JoyNumHats)
-                Quit("The joystickhat param must be between 0 and %i!", JoyNumHats - 1);
+//            if(param_joystickhat < -1 || param_joystickhat >= JoyNumHats)
+//                Quit("The joystickhat param must be between 0 and %i!", JoyNumHats - 1);
         }
     }
 
@@ -392,7 +433,7 @@ IN_Startup(void)
     if(fullscreen || forcegrabmouse)
     {
         GrabInput = true;
-        SDL_WM_GrabInput(SDL_GRAB_ON);
+        SDL_SetRelativeMouseMode(GrabInput ? SDL_TRUE : SDL_FALSE);
     }
 
     // I didn't find a way to ask libSDL whether a mouse is present, yet...
@@ -434,7 +475,7 @@ IN_ClearKeysDown(void)
 {
 	LastScan = sc_None;
 	LastASCII = key_None;
-	memset ((void *) Keyboard,0,sizeof(Keyboard));
+	Keyboard.clear();
 }
 
 
@@ -660,5 +701,5 @@ bool IN_IsInputGrabbed()
 
 void IN_CenterMouse()
 {
-    SDL_WarpMouse(screenWidth / 2, screenHeight / 2);
+    SDL_WarpMouseInWindow(0, screenWidth / 2, screenHeight / 2);
 }

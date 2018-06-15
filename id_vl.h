@@ -11,6 +11,9 @@ void Quit (const char *error,...);
 
 //===========================================================================
 
+extern SDL_Window *window;
+extern SDL_Renderer *renderer;
+extern SDL_Texture *texture;
 extern SDL_Surface *screen, *screenBuffer, *curSurface;
 
 extern  boolean  fullscreen, usedoublebuffering;
@@ -30,6 +33,7 @@ extern SDL_Color gamepal[256];
 
 #define VL_WaitVBL(a) SDL_Delay((a)*8)
 
+void VL_Flip (void);
 void VL_SetVGAPlaneMode (void);
 void VL_SetTextMode (void);
 void VL_Shutdown (void);

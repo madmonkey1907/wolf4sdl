@@ -14,7 +14,8 @@ INSTALL_MAN     ?= $(INSTALL) -m 444
 INSTALL_DATA    ?= $(INSTALL) -m 444
 
 
-SDL_CONFIG  ?= sdl-config
+SDL_CONFIG  ?= sdl2-config
+PKG_CONFIG  ?= pkg-config
 CFLAGS_SDL  ?= $(shell $(SDL_CONFIG) --cflags)
 LDFLAGS_SDL ?= $(shell $(SDL_CONFIG) --libs)
 
@@ -34,7 +35,7 @@ ifdef DATADIR
 endif
 
 CCFLAGS += $(CFLAGS)
-CCFLAGS += -std=gnu99
+CCFLAGS += -std=gnu99 -g
 CCFLAGS += -Werror-implicit-function-declaration
 CCFLAGS += -Wimplicit-int
 CCFLAGS += -Wsequence-point
@@ -42,7 +43,8 @@ CCFLAGS += -Wsequence-point
 CXXFLAGS += $(CFLAGS)
 
 LDFLAGS += $(LDFLAGS_SDL)
-LDFLAGS += -lSDL_mixer
+LDFLAGS += $(shell $(PKG_CONFIG) SDL2_mixer --libs)
+LDFLAGS += -lEGL -lpthread -ldl -Wl,--as-needed -Wl,--no-undefined
 
 SRCS :=
 SRCS += fmopl.cpp
